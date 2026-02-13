@@ -33,6 +33,7 @@
 #include <string.h>
 
 static int addpath(const char *);
+static int rmpath(const char *);
 static int get_history_path(char *, size_t);
 static int dedupcheck(const char *, const char *);
 static void __dead usage(void);
@@ -67,6 +68,11 @@ main(int argc, char *argv[])
 		if (!addpath(apath))
 			err(1, NULL);
 
+	if (rpath != NULL)
+		if (!rmpath(rpath))
+			err(1, NULL);
+
+
 	return (0);
 }
 
@@ -97,6 +103,55 @@ addpath(const char *path)
 	return (1);
 }
 
+static int
+rmpath(const char *path)
+{
+	FILE *fp, *tmp;
+	char pipa_buf[PATH_MAX];
+	char resolved[PATH_MAX];
+	char tmpfile[PATH_MAX];
+	char buf[PATH_MAX];
+	int ch, pos;
+
+	if (!get_history_path(pipa_buf, sizeof(pipa_buf)))
+		return (0);
+
+	if (realpath(path, resolved) == NULL)
+		return (0);
+
+	if (snprintf(tmpfile, sizeof(tmpfile), "%s.tmp", pipa_buf) < 0)
+		return (0);
+
+	fp = fopen(pipa_buf, "r");
+	if (fp == NULL)
+		return (0);
+
+	tmp = fopen(tmpfile, "w");
+	if (tmp == NULL) {
+		fclose(fp);
+		return (0);
+	}
+
+	pos = 0;
+	while ((ch = getc(fp)) != EOF) {
+		if (pos < sizeof(buf) - 1)
+			buf[pos++] = ch;
+
+		if (ch == '\n') {
+			buf[pos - 1] = '\0';
+			if (strcmp(buf, resolved) != 0)
+				fprintf(tmp, "%s\n", buf);
+			pos = 0;
+		}
+	}
+	fclose(fp);
+	fclose(tmp);
+
+	if (rename(tmpfile, pipa_buf) != 0)
+		return (0);
+
+	return (1);
+}
 
 static int
 get_history_path(char *buf, size_t bufsize)
