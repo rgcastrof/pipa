@@ -33,6 +33,7 @@
 #include <string.h>
 
 static int addpath(const char *);
+static int get_history_path(char *, size_t);
 static int dedupcheck(const char *, const char *);
 static void __dead usage(void);
 
@@ -73,18 +74,13 @@ static int
 addpath(const char *path)
 {
 	FILE *fp;
-	char *home;
 	char resolved[PATH_MAX];
 	char pipa_buf[PATH_MAX];
 
-	home = getenv("HOME");
-	if (home == NULL)
+	if (!get_history_path(pipa_buf, sizeof(pipa_buf)))
 		return (0);
 
 	if (realpath(path, resolved) == NULL)
-		return (0);
-
-	if (snprintf(pipa_buf, sizeof(pipa_buf), "%s/.pipa_history", home) < 0)
 		return (0);
 
 	if (dedupcheck(pipa_buf, resolved))
@@ -98,6 +94,22 @@ addpath(const char *path)
 		return 0;
 
 	(void)fclose(fp);
+	return (1);
+}
+
+
+static int
+get_history_path(char *buf, size_t bufsize)
+{
+	char *home;
+
+	home = getenv("HOME");
+	if (home == NULL)
+		return (0);
+
+	if (snprintf(buf, bufsize, "%s/.pipa_history", home) < 0)
+		return (0);
+
 	return (1);
 }
 
