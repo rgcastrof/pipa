@@ -25,3 +25,116 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <limits.h>
+#include <err.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+static int addpath(const char *);
+static int dedupcheck(const char *, const char *);
+static void __dead usage(void);
+
+int
+main(int argc, char *argv[])
+{
+	char *apath = NULL, *rpath = NULL;
+	int aflag = 0, rflag = 0;
+	int ch;
+
+	while ((ch = getopt(argc, argv, "a:r:lc")) != -1)
+		switch (ch) {
+		case 'a':
+			apath = optarg;
+			aflag = 1;
+			break;
+		case 'r':
+			rpath = optarg;
+			rflag = 1;
+			break;
+		default:
+			usage();
+		}
+	argc -= optind;
+	argv += optind;
+
+	if (!aflag && !rflag)
+		usage();
+
+	if (apath != NULL)
+		if (!addpath(apath))
+			err(1, NULL);
+
+	return (0);
+}
+
+static int
+addpath(const char *path)
+{
+	FILE *fp;
+	char *home;
+	char resolved[PATH_MAX];
+	char pipa_buf[PATH_MAX];
+
+	home = getenv("HOME");
+	if (home == NULL)
+		return (0);
+
+	if (realpath(path, resolved) == NULL)
+		return (0);
+
+	if (snprintf(pipa_buf, sizeof(pipa_buf), "%s/.pipa_history", home) < 0)
+		return (0);
+
+	if (dedupcheck(pipa_buf, resolved))
+		return (1);
+
+	fp = fopen(pipa_buf, "a");
+	if (fp == NULL)
+		return (0);
+
+	if (fprintf(fp, "%s\n", resolved) < 0)
+		return 0;
+
+	(void)fclose(fp);
+	return (1);
+}
+
+static int
+dedupcheck(const char *pipa_buf, const char *target)
+{
+	FILE *fp;
+	char buf[PATH_MAX];
+	size_t pos;
+	int ch;
+
+	fp = fopen(pipa_buf, "r");
+	if (fp == NULL)
+		return (0);
+
+	pos = 0;
+	while ((ch = getc(fp)) != EOF) {
+		if (pos < sizeof(buf) - 1)
+			buf[pos++] = ch;
+
+		if (ch == '\n') {
+			buf[pos - 1] = '\0';
+			if (strcmp(buf, target) == 0) {
+				fclose(fp);
+				return (1);
+			}
+
+			pos = 0;
+		}
+	}
+	(void)fclose(fp);
+	return (0);
+}
+
+static void __dead
+usage(void)
+{
+	(void)fprintf(stderr, "usage: %s [-arlc] path ...\n", getprogname());
+	exit(1);
+}
