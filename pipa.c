@@ -96,8 +96,10 @@ addpath(const char *path)
 	if (fp == NULL)
 		return (0);
 
-	if (fprintf(fp, "%s\n", resolved) < 0)
+	if (fprintf(fp, "%s\n", resolved) < 0) {
+		fclose(fp);
 		return 0;
+	}
 
 	(void)fclose(fp);
 	return (1);
