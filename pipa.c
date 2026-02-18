@@ -81,18 +81,18 @@ addpath(const char *path)
 {
 	FILE *fp;
 	char resolved[PATH_MAX];
-	char pipa_buf[PATH_MAX];
+	char hist[PATH_MAX];
 
-	if (!get_history_path(pipa_buf, sizeof(pipa_buf)))
+	if (!get_history_path(hist, sizeof(hist)))
 		return (0);
 
 	if (realpath(path, resolved) == NULL)
 		return (0);
 
-	if (dedupcheck(pipa_buf, resolved))
+	if (dedupcheck(hist, resolved))
 		return (1);
 
-	fp = fopen(pipa_buf, "a");
+	fp = fopen(hist, "a");
 	if (fp == NULL)
 		return (0);
 
@@ -101,7 +101,7 @@ addpath(const char *path)
 		return 0;
 	}
 
-	(void)fclose(fp);
+	fclose(fp);
 	return (1);
 }
 
@@ -109,22 +109,21 @@ static int
 rmpath(const char *path)
 {
 	FILE *fp, *tmp;
-	char pipa_buf[PATH_MAX];
+	char hist[PATH_MAX];
 	char resolved[PATH_MAX];
 	char tmpfile[PATH_MAX];
 	char buf[PATH_MAX];
-	int ch, pos;
 
-	if (!get_history_path(pipa_buf, sizeof(pipa_buf)))
+	if (!get_history_path(hist, sizeof(hist)))
 		return (0);
 
 	if (realpath(path, resolved) == NULL)
 		return (0);
 
-	if (snprintf(tmpfile, sizeof(tmpfile), "%s.tmp", pipa_buf) < 0)
+	if (snprintf(tmpfile, sizeof(tmpfile), "%s.tmp", hist) < 0)
 		return (0);
 
-	fp = fopen(pipa_buf, "r");
+	fp = fopen(hist, "r");
 	if (fp == NULL)
 		return (0);
 
@@ -134,22 +133,16 @@ rmpath(const char *path)
 		return (0);
 	}
 
-	pos = 0;
-	while ((ch = getc(fp)) != EOF) {
-		if (pos < sizeof(buf) - 1)
-			buf[pos++] = ch;
-
-		if (ch == '\n') {
-			buf[pos - 1] = '\0';
-			if (strcmp(buf, resolved) != 0)
-				fprintf(tmp, "%s\n", buf);
-			pos = 0;
-		}
+	while ((fgets(buf, sizeof(buf), fp)) != NULL) {
+		buf[strcspn(buf, "\n")] = '\0';
+		if (strcmp(buf, resolved) != 0)
+			fprintf(tmp, "%s\n", buf);
 	}
+
 	fclose(fp);
 	fclose(tmp);
 
-	if (rename(tmpfile, pipa_buf) != 0)
+	if (rename(tmpfile, hist) != 0)
 		return (0);
 
 	return (1);
@@ -171,33 +164,24 @@ get_history_path(char *buf, size_t bufsize)
 }
 
 static int
-dedupcheck(const char *pipa_buf, const char *target)
+dedupcheck(const char *hist, const char *target)
 {
 	FILE *fp;
 	char buf[PATH_MAX];
-	size_t pos;
-	int ch;
 
-	fp = fopen(pipa_buf, "r");
+	fp = fopen(hist, "r");
 	if (fp == NULL)
 		return (0);
 
-	pos = 0;
-	while ((ch = getc(fp)) != EOF) {
-		if (pos < sizeof(buf) - 1)
-			buf[pos++] = ch;
+	while ((fgets(buf, sizeof(buf), fp)) != NULL) {
+		buf[strcspn(buf, "\n")] = '\0';
 
-		if (ch == '\n') {
-			buf[pos - 1] = '\0';
-			if (strcmp(buf, target) == 0) {
-				fclose(fp);
-				return (1);
-			}
-
-			pos = 0;
+		if (strcmp(buf, target) == 0) {
+			fclose(fp);
+			return (1);
 		}
 	}
-	(void)fclose(fp);
+	fclose(fp);
 	return (0);
 }
 
