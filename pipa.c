@@ -32,9 +32,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+typedef char pathbuf_t[PATH_MAX];
+
 static int addpath(const char *);
 static int rmpath(const char *);
-static int get_history_path(char *, size_t);
+static int get_histpath(char *, size_t);
 static int dedupcheck(const char *, const char *);
 static void __dead usage(void);
 
@@ -72,7 +74,6 @@ main(int argc, char *argv[])
 		if (!rmpath(rpath))
 			err(1, NULL);
 
-
 	return (0);
 }
 
@@ -80,10 +81,10 @@ static int
 addpath(const char *path)
 {
 	FILE *fp;
-	char resolved[PATH_MAX];
-	char hist[PATH_MAX];
+	pathbuf_t resolved;
+	pathbuf_t hist;
 
-	if (!get_history_path(hist, sizeof(hist)))
+	if (!get_histpath(hist, sizeof(hist)))
 		return (0);
 
 	if (realpath(path, resolved) == NULL)
@@ -109,12 +110,12 @@ static int
 rmpath(const char *path)
 {
 	FILE *fp, *tmp;
-	char hist[PATH_MAX];
-	char resolved[PATH_MAX];
-	char tmpfile[PATH_MAX];
-	char buf[PATH_MAX];
+	pathbuf_t hist;
+	pathbuf_t resolved;
+	pathbuf_t tmpfile;
+	pathbuf_t buf;
 
-	if (!get_history_path(hist, sizeof(hist)))
+	if (!get_histpath(hist, sizeof(hist)))
 		return (0);
 
 	if (realpath(path, resolved) == NULL)
@@ -149,7 +150,7 @@ rmpath(const char *path)
 }
 
 static int
-get_history_path(char *buf, size_t bufsize)
+get_histpath(char *buf, size_t bufsize)
 {
 	char *home;
 
@@ -167,7 +168,7 @@ static int
 dedupcheck(const char *hist, const char *target)
 {
 	FILE *fp;
-	char buf[PATH_MAX];
+	pathbuf_t buf;
 
 	fp = fopen(hist, "r");
 	if (fp == NULL)
