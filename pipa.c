@@ -34,9 +34,16 @@
 
 typedef char pathbuf_t[PATH_MAX];
 
+struct linebuffer {
+	pathbuf_t *data;
+	size_t len;
+	size_t cap;
+};
+
 static int addpath(const char *);
 static int rmpath(const char *);
 static int get_histpath(char *, size_t);
+static int loadlines(const char *, struct linebuffer *);
 static int dedupcheck(const char *, const char *);
 static void __dead usage(void);
 
@@ -146,6 +153,42 @@ rmpath(const char *path)
 	if (rename(tmpfile, hist) != 0)
 		return (0);
 
+	return (1);
+}
+
+static int
+loadlines(const char *filepath, struct linebuffer *lb)
+{
+	FILE *fp;
+	pathbuf_t *tmp;
+	lb->data = NULL;
+	lb->cap = 0, lb->len = 0;
+
+	fp = fopen(filepath, "r");
+	if (fp == NULL)
+		return (0);
+
+	for (;;) {
+		if (lb->len == lb->cap) {
+			lb->cap = lb->cap ? lb->cap * 2 : 16;
+			tmp = reallocarray(lb->data, lb->cap, sizeof(*tmp));
+			if (tmp == NULL) {
+				free(lb->data);
+				lb->data = NULL;
+				fclose(fp);
+				return (0);
+			}
+			lb->data = tmp;
+		}
+
+		if (fgets(lb->data[lb->len], PATH_MAX, fp) == NULL)
+			break;
+
+		/* remove '\n' read by fgets */
+		lb->data[lb->len][strcspn(lb->data[lb->len], "\n")] = '\0';
+		lb->len++;
+	}
+	fclose(fp);
 	return (1);
 }
 
