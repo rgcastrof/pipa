@@ -56,6 +56,7 @@ struct string {
 static void __dead run(void);
 static int addpath(const char *);
 static void mkfilter(const struct linebuffer *, const char *, struct matches *, int);
+static void processkey(const int, int *);
 static int rmpath(const char *);
 static int get_histpath(char *, size_t);
 static int touch(const char *);
@@ -142,25 +143,7 @@ run(void)
 		refresh();
 
 		ch = getch();
-		if (ch == '\n') {
-			tui_cleanup();
-			if (m.count > 0)
-				printf("%s\n", m.data[idx]);
-			free(lb.data);
-			free(m.data);
-			exit(0);
-		}
-		if (ch == 127 || ch == 8 || ch == KEY_BACKSPACE) {
-			if (input_len > 0) {
-				input[--input_len] = '\0';
-				idx = 0;
-			}
-		}
-		else if (isprint(ch) && input_len < sizeof(input) - 1) {
-			input[input_len++] = ch;
-			input[input_len] = '\0';
-			idx = 0;
-		}
+		processkey(ch, &idx);
 	}
 }
 
@@ -171,6 +154,35 @@ mkfilter(const struct linebuffer *lb, const char *str, struct matches *m, int ma
 	for (size_t i = 0; i < lb->len && m->count < maxrows; i++)
 		if (strstr(lb->data[i], str))
 			m->data[m->count++] = lb->data[i];
+}
+
+static void
+processkey(const int ch, int *idx)
+{
+	switch (ch) {
+		case '\n':
+		case KEY_ENTER:
+			tui_cleanup();
+			if (m.count > 0)
+				printf("%s\n", m.data[*idx]);
+			free(lb.data);
+			free(m.data);
+			exit(0);
+		case 127:
+		case KEY_BACKSPACE:
+			if (input.len > 0) {
+				input.data[--input.len] = '\0';
+				*idx = 0;
+			}
+			break;
+		default:
+			if (isprint(ch))
+				if (input.len < sizeof(input.data) - 1) {
+					input.data[input.len++] = ch;
+					input.data[input.len] = '\0';
+					*idx = 0;
+				}
+	}
 }
 
 static int
