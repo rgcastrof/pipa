@@ -56,7 +56,7 @@ struct string {
 static void __dead run(void);
 static int addpath(const char *);
 static void mkfilter(const struct linebuffer *, const char *, struct matches *, int);
-static void processkey(const int, int *);
+static void processkey(const int, int *, int *);
 static int rmpath(const char *);
 static int get_histpath(char *, size_t);
 static int touch(const char *);
@@ -111,7 +111,7 @@ run(void)
 {
 	pathbuf_t hist;
 	int ch, rows, cols;
-	int idx = 0;
+	int idx = 0, filter = 1;
 
 	if (!get_histpath(hist, sizeof(hist)))
 		errx(1, "get_histpath");
@@ -130,20 +130,21 @@ run(void)
 	m.data = malloc(rows * sizeof(char *));
 
 	while (1) {
-		clear();
-		mkfilter(&lb, input.data, &m, rows - 3);
+		if (filter)
+			mkfilter(&lb, input.data, &m, rows - 3);
+
+		erase();
 		for (size_t i = 0; i < m.count; i++) {
 			if (i == idx)
 				attron(A_REVERSE);
 			mvprintw(rows - 3 - i, 2, "%s", m.data[i]);
-
 			attroff(A_REVERSE);
 		}
 		mvprintw(rows - 1, 1, "> %s", input.data);
 		refresh();
 
 		ch = getch();
-		processkey(ch, &idx);
+		processkey(ch, &idx, &filter);
 	}
 }
 
@@ -157,8 +158,10 @@ mkfilter(const struct linebuffer *lb, const char *str, struct matches *m, int ma
 }
 
 static void
-processkey(const int ch, int *idx)
+processkey(const int ch, int *idx, int *filter)
 {
+	*filter = 0;
+
 	switch (ch) {
 		case '\n':
 		case KEY_ENTER:
@@ -173,6 +176,7 @@ processkey(const int ch, int *idx)
 			if (input.len > 0) {
 				input.data[--input.len] = '\0';
 				*idx = 0;
+				*filter = 1;
 			}
 			break;
 		case KEY_UP:
@@ -189,6 +193,7 @@ processkey(const int ch, int *idx)
 					input.data[input.len++] = ch;
 					input.data[input.len] = '\0';
 					*idx = 0;
+					*filter = 1;
 				}
 	}
 }
