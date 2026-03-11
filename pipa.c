@@ -48,6 +48,11 @@ struct matches {
 	size_t count;
 };
 
+struct string {
+	char data[128];
+	size_t len;
+};
+
 static void __dead run(void);
 static int addpath(const char *);
 static void mkfilter(const struct linebuffer *, const char *, struct matches *, int);
@@ -57,6 +62,11 @@ static int touch(const char *);
 static int loadlines(const char *, struct linebuffer *);
 static int dedupcheck(const char *, const char *);
 static void __dead usage(void);
+
+/* globals */
+static struct linebuffer lb;
+static struct matches m;
+static struct string input = {0};
 
 int
 main(int argc, char *argv[])
@@ -98,12 +108,9 @@ main(int argc, char *argv[])
 static void __dead
 run(void)
 {
-	struct linebuffer lb;
-	struct matches m;
 	pathbuf_t hist;
-	char input[128];
 	int ch, rows, cols;
-	int input_len = 0, idx = 0;
+	int idx = 0;
 
 	if (!get_histpath(hist, sizeof(hist)))
 		errx(1, "get_histpath");
@@ -121,10 +128,9 @@ run(void)
 	/* allocates only what fits in the terminal */
 	m.data = malloc(rows * sizeof(char *));
 
-	input[0] = '\0';
 	while (1) {
 		clear();
-		mkfilter(&lb, input, &m, rows - 3);
+		mkfilter(&lb, input.data, &m, rows - 3);
 		for (size_t i = 0; i < m.count; i++) {
 			if (i == idx)
 				attron(A_REVERSE);
@@ -132,8 +138,7 @@ run(void)
 
 			attroff(A_REVERSE);
 		}
-		mvprintw(rows - 1, 1, "> %s", input);
-
+		mvprintw(rows - 1, 1, "> %s", input.data);
 		refresh();
 
 		ch = getch();
@@ -157,7 +162,6 @@ run(void)
 			idx = 0;
 		}
 	}
-
 }
 
 static void
