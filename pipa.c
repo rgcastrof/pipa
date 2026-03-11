@@ -175,6 +175,14 @@ processkey(const int ch, int *idx)
 				*idx = 0;
 			}
 			break;
+		case KEY_UP:
+			if (*idx < (int)m.count - 1)
+				(*idx)++;
+			break;
+		case KEY_DOWN:
+			if (*idx > 0)
+				(*idx)--;
+			break;
 		default:
 			if (isprint(ch))
 				if (input.len < sizeof(input.data) - 1) {
