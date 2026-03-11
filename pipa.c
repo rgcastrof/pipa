@@ -40,7 +40,13 @@ struct linebuffer {
 	size_t cap;
 };
 
+struct matches {
+	char **data;
+	size_t count;
+};
+
 static int addpath(const char *);
+static void mkfilter(const struct linebuffer *, const char *, struct matches *, int);
 static int rmpath(const char *);
 static int get_histpath(char *, size_t);
 static int loadlines(const char *, struct linebuffer *);
@@ -82,6 +88,15 @@ main(int argc, char *argv[])
 			err(1, NULL);
 
 	return (0);
+}
+
+static void
+mkfilter(const struct linebuffer *lb, const char *str, struct matches *m, int maxrows)
+{
+	m->count = 0;
+	for (size_t i = 0; i < lb->len && m->count < maxrows; i++)
+		if (strstr(lb->data[i], str))
+			m->data[m->count++] = lb->data[i];
 }
 
 static int
