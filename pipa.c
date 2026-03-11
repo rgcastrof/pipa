@@ -53,6 +53,7 @@ static int addpath(const char *);
 static void mkfilter(const struct linebuffer *, const char *, struct matches *, int);
 static int rmpath(const char *);
 static int get_histpath(char *, size_t);
+static int touch(const char *);
 static int loadlines(const char *, struct linebuffer *);
 static int dedupcheck(const char *, const char *);
 static void __dead usage(void);
@@ -106,6 +107,10 @@ run(void)
 
 	if (!get_histpath(hist, sizeof(hist)))
 		errx(1, "get_histpath");
+
+	if (access(hist, F_OK) == -1)
+		if (!touch(hist))
+			errx(1, "touch");
 
 	if (!loadlines(hist, &lb))
 		errx(1, "loadlines");
@@ -234,6 +239,17 @@ rmpath(const char *path)
 		return (0);
 
 	return (1);
+}
+
+static int
+touch(const char *path)
+{
+	FILE *fp;
+	fp = fopen(path, "a");
+	if (fp == NULL)
+		return (0);
+	fclose(fp);
+	return 1;
 }
 
 static int
