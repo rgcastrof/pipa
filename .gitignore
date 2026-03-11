@@ -1,3 +1,4 @@
 pipa
 *.d
 *.o
+*.core
