@@ -25,12 +25,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <ctype.h>
 #include <limits.h>
 #include <err.h>
-#include <unistd.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "tui.h"
 
 typedef char pathbuf_t[PATH_MAX];
 
@@ -45,6 +48,7 @@ struct matches {
 	size_t count;
 };
 
+static void __dead run(void);
 static int addpath(const char *);
 static void mkfilter(const struct linebuffer *, const char *, struct matches *, int);
 static int rmpath(const char *);
@@ -77,7 +81,7 @@ main(int argc, char *argv[])
 	argv += optind;
 
 	if (!aflag && !rflag)
-		usage();
+		run();
 
 	if (apath != NULL)
 		if (!addpath(apath))
@@ -88,6 +92,67 @@ main(int argc, char *argv[])
 			err(1, NULL);
 
 	return (0);
+}
+
+static void __dead
+run(void)
+{
+	struct linebuffer lb;
+	struct matches m;
+	pathbuf_t hist;
+	char input[128];
+	int ch, rows, cols;
+	int input_len = 0, idx = 0;
+
+	if (!get_histpath(hist, sizeof(hist)))
+		errx(1, "get_histpath");
+
+	if (!loadlines(hist, &lb))
+		errx(1, "loadlines");
+
+	tui_setup();
+	getmaxyx(stdscr, rows, cols);
+
+	/* allocates only what fits in the terminal */
+	m.data = malloc(rows * sizeof(char *));
+
+	input[0] = '\0';
+	while (1) {
+		clear();
+		mkfilter(&lb, input, &m, rows - 3);
+		for (size_t i = 0; i < m.count; i++) {
+			if (i == idx)
+				attron(A_REVERSE);
+			mvprintw(rows - 3 - i, 2, "%s", m.data[i]);
+
+			attroff(A_REVERSE);
+		}
+		mvprintw(rows - 1, 1, "> %s", input);
+
+		refresh();
+
+		ch = getch();
+		if (ch == '\n') {
+			tui_cleanup();
+			if (m.count > 0)
+				printf("%s\n", m.data[idx]);
+			free(lb.data);
+			free(m.data);
+			exit(0);
+		}
+		if (ch == 127 || ch == 8 || ch == KEY_BACKSPACE) {
+			if (input_len > 0) {
+				input[--input_len] = '\0';
+				idx = 0;
+			}
+		}
+		else if (isprint(ch) && input_len < sizeof(input) - 1) {
+			input[input_len++] = ch;
+			input[input_len] = '\0';
+			idx = 0;
+		}
+	}
+
 }
 
 static void
