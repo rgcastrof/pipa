@@ -59,6 +59,7 @@ static void mkfilter(const struct linebuffer *, const char *, struct matches *, 
 static void processkey(const int, int *, int *);
 static int rmpath(const char *);
 static int clearhist(void);
+static int printhist(void);
 static int get_histpath(char *, size_t);
 static int touch(const char *);
 static int loadlines(const char *, struct linebuffer *);
@@ -74,10 +75,10 @@ int
 main(int argc, char *argv[])
 {
 	char *apath = NULL, *rpath = NULL;
-	int aflag = 0, rflag = 0, cflag = 0;
+	int aflag = 0, rflag = 0, cflag = 0, lflag = 0;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "a:r:c")) != -1)
+	while ((ch = getopt(argc, argv, "a:r:cl")) != -1)
 		switch (ch) {
 		case 'a':
 			apath = optarg;
@@ -90,25 +91,28 @@ main(int argc, char *argv[])
 		case 'c':
 			cflag = 1;
 			break;
+		case 'l':
+			lflag = 1;
+			break;
 		default:
 			usage();
 		}
 	argc -= optind;
 	argv += optind;
 
-	if (!aflag && !rflag && !cflag)
+	if (!aflag && !rflag && !cflag && !lflag)
 		run();
-
 	if (apath != NULL)
 		if (!addpath(apath))
 			err(1, NULL);
-
 	if (rpath != NULL)
 		if (!rmpath(rpath))
 			err(1, NULL);
-
 	if (cflag)
 		if (!clearhist())
+			err(1, NULL);
+	if (lflag)
+		if (!printhist())
 			err(1, NULL);
 
 	return (0);
@@ -295,6 +299,25 @@ clearhist(void)
 }
 
 static int
+printhist(void)
+{
+	FILE *fp;
+	pathbuf_t hist;
+	pathbuf_t path;
+
+	if (!get_histpath(hist, sizeof(hist)))
+		return (0);
+
+	fp = fopen(hist, "r");
+	if (fp == NULL)
+		return (0);
+
+	while (fgets(path, sizeof(path), fp) != NULL)
+		printf("%s", path);
+	return (1);
+}
+
+static int
 touch(const char *path)
 {
 	FILE *fp;
@@ -381,6 +404,6 @@ dedupcheck(const char *hist, const char *target)
 static void __dead
 usage(void)
 {
-	(void)fprintf(stderr, "usage: %s [-arc] path ...\n", getprogname());
+	(void)fprintf(stderr, "usage: %s [-arcl] path ...\n", getprogname());
 	exit(1);
 }
