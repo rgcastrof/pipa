@@ -63,7 +63,7 @@ void
 tui_draw(const char **matches, const size_t mcount, const size_t lcount,
      const int selected, const char *input)
 {
-	for (size_t i = 0; i < mcount; i++) {
+	for (size_t i = 0; i < mcount && (int)i < LINES - 3; i++) {
 		if (i == selected)
 			attron(COLOR_PAIR(1) | A_BOLD);
 		mvprintw(LINES - 3 - i, 0, "║ %s", matches[i]);
