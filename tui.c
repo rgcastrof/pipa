@@ -26,6 +26,7 @@
  */
 
 #include <err.h>
+#include <string.h>
 
 #include "tui.h"
 
@@ -63,12 +64,22 @@ void
 tui_draw(const char **matches, const size_t mcount, const size_t lcount,
      const int selected, const char *input)
 {
+	int borderlen = 2, dotslen = 3;
+	int avaliable = COLS - borderlen - dotslen;
+
 	for (size_t i = 0; i < mcount && (int)i < LINES - 3; i++) {
 		if (i == selected)
 			attron(COLOR_PAIR(1) | A_BOLD);
-		mvprintw(LINES - 3 - i, 0, "║ %s", matches[i]);
+
+		/* truncate paths string that exceed terminal width */
+		if ((int)strlen(matches[i]) + borderlen < COLS)
+			mvprintw(LINES - 3 - i, 0, "║ %s", matches[i]);
+		else
+			mvprintw(LINES - 3 - i, 0, "║ %.*s...", avaliable, matches[i]);
+
 		attroff(COLOR_PAIR(1) | A_BOLD);
 	}
+
 	attron(COLOR_PAIR(2));
 	mvprintw(LINES - 2, 2, "%lu/%lu", mcount, lcount);
 	attroff(COLOR_PAIR(2));
