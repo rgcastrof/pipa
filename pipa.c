@@ -28,6 +28,7 @@
 #include <ctype.h>
 #include <limits.h>
 #include <err.h>
+#include <locale.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -44,7 +45,7 @@ struct linebuffer {
 };
 
 struct matches {
-	char **data;
+	const char **data;
 	size_t count;
 };
 
@@ -135,6 +136,7 @@ run(void)
 	if (!loadlines(hist, &lb))
 		errx(1, "loadlines");
 
+	setlocale(LC_ALL, "");
 	tui_setup();
 
 	/* allocates only what fits in the terminal */
