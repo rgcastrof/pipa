@@ -122,7 +122,7 @@ static void __dead
 run(void)
 {
 	pathbuf_t hist;
-	int ch, rows, cols;
+	int ch;
 	int idx = 0, filter = 1;
 
 	if (!get_histpath(hist, sizeof(hist)))
@@ -136,14 +136,13 @@ run(void)
 		errx(1, "loadlines");
 
 	tui_setup();
-	getmaxyx(stdscr, rows, cols);
 
 	/* allocates only what fits in the terminal */
-	m.data = malloc(rows * sizeof(char *));
+	m.data = malloc(LINES * sizeof(char *));
 
 	while (1) {
 		if (filter)
-			mkfilter(&lb, input.data, &m, rows - 3);
+			mkfilter(&lb, input.data, &m, LINES - 3);
 
 		erase();
 		for (size_t i = 0; i < m.count; i++) {
