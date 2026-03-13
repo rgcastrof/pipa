@@ -145,13 +145,7 @@ run(void)
 			mkfilter(&lb, input.data, &m, LINES - 3);
 
 		erase();
-		for (size_t i = 0; i < m.count; i++) {
-			if (i == idx)
-				attron(A_REVERSE);
-			mvprintw(rows - 3 - i, 2, "%s", m.data[i]);
-			attroff(A_REVERSE);
-		}
-		mvprintw(rows - 1, 1, "> %s", input.data);
+		tui_draw(m.data, m.count, lb.len, idx, input.data);
 		refresh();
 
 		ch = getch();

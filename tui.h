@@ -34,4 +34,5 @@ struct tui {
 };
 
 void tui_setup(void);
+void tui_draw(const char **, const size_t, const size_t, const int, const char *);
 void tui_cleanup(void);

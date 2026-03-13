@@ -29,6 +29,8 @@
 
 #include "tui.h"
 
+static void setcolors(void);
+
 static struct tui t;
 
 void
@@ -45,6 +47,34 @@ tui_setup(void)
 
 	noecho();
 	keypad(stdscr, TRUE);
+	setcolors();
+}
+
+static void
+setcolors(void)
+{
+	start_color();
+	use_default_colors();
+	init_pair(1, COLOR_WHITE, COLOR_RED);
+	init_pair(2, COLOR_GREEN, -1);
+}
+
+void
+tui_draw(const char **matches, const size_t mcount, const size_t lcount,
+     const int selected, const char *input)
+{
+	for (size_t i = 0; i < mcount; i++) {
+		if (i == selected)
+			attron(COLOR_PAIR(1) | A_BOLD);
+		mvprintw(LINES - 3 - i, 0, "║ %s", matches[i]);
+		attroff(COLOR_PAIR(1) | A_BOLD);
+	}
+	attron(COLOR_PAIR(2));
+	mvprintw(LINES - 2, 2, "%lu/%lu", mcount, lcount);
+	attroff(COLOR_PAIR(2));
+	attron(A_BOLD);
+	mvprintw(LINES - 1, 0, "> %s", input);
+	attroff(A_BOLD);
 }
 
 void
