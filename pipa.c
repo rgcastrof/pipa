@@ -54,16 +54,16 @@ struct string {
 };
 
 static void __dead run(void);
-static int addpath(const char *);
+static int  addpath(const char *);
 static void mkfilter(const struct linebuffer *, const char *, struct matches *, int);
 static void processkey(const int, int *, int *);
-static int rmpath(const char *);
-static int clearhist(void);
-static int printhist(void);
-static int get_histpath(char *, size_t);
-static int touch(const char *);
-static int loadlines(const char *, struct linebuffer *);
-static int dedupcheck(const char *, const char *);
+static int  rmpath(const char *);
+static int  clearhist(void);
+static int  printhist(void);
+static int  get_histpath(char *, size_t);
+static int  touch(const char *);
+static int  loadlines(const char *, struct linebuffer *);
+static int  dedupcheck(const char *, const char *);
 static void __dead usage(void);
 
 /* globals */
