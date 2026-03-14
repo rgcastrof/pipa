@@ -78,6 +78,7 @@ static struct string input = {0};
 int
 main(int argc, char *argv[])
 {
+	pathbuf_t resolved;
 	char *apath = NULL, *rpath = NULL;
 	int aflag = 0, rflag = 0, cflag = 0, lflag = 0, eflag = 0;
 	int ch;
@@ -109,21 +110,27 @@ main(int argc, char *argv[])
 
 	if (!aflag && !rflag && !cflag && !lflag && !eflag)
 		run();
-	if (apath != NULL)
-		if (!addpath(apath))
+
+	if (aflag) {
+		if (!realpath(apath, resolved))
 			err(1, NULL);
-	if (rpath != NULL)
-		if (!rmpath(rpath))
+		addpath(resolved);
+	}
+
+	if (rflag) {
+		if (!realpath(rpath, resolved))
 			err(1, NULL);
-	if (cflag)
-		if (!clearhist())
-			err(1, NULL);
-	if (lflag)
-		if (!printhist())
-			err(1, NULL);
-	if (eflag)
-		if(!exists())
-			err(1, NULL);
+		filterhist(rmpath, resolved);
+	}
+
+	if (cflag && !clearhist())
+		err(1, NULL);
+
+	if (lflag && !printhist())
+		err(1, NULL);
+
+	if (eflag && !filterhist(exists, NULL))
+		err(1, NULL);
 
 	return (0);
 }
@@ -218,18 +225,14 @@ static int
 addpath(const char *path)
 {
 	FILE *fp;
-	pathbuf_t resolved;
 
 	if (!openhist(&fp, "a"))
 		return (0);
 
-	if (realpath(path, resolved) == NULL)
-		return (0);
-
-	if (dedupcheck(resolved))
+	if (dedupcheck(path))
 		return (1);
 
-	if (fprintf(fp, "%s\n", resolved) < 0) {
+	if (fprintf(fp, "%s\n", path) < 0) {
 		fclose(fp);
 		return 0;
 	}
