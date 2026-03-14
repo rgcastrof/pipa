@@ -67,6 +67,7 @@ static int  touch(const char *);
 static int  loadlines(const char *, struct linebuffer *);
 static int  dedupcheck(const char *);
 static int  openhist(FILE **, const char *);
+static void chomp(char *);
 static void __dead usage(void);
 
 /* globals */
@@ -266,7 +267,7 @@ rmpath(const char *path)
 	}
 
 	while ((fgets(buf, sizeof(buf), fp)) != NULL) {
-		buf[strcspn(buf, "\n")] = '\0';
+		chomp(buf);
 		if (strcmp(buf, resolved) != 0)
 			fprintf(tmp, "%s\n", buf);
 	}
@@ -331,7 +332,7 @@ exists(void)
 	}
 
 	while (fgets(path, sizeof(path), fp) != NULL) {
-		path[strcspn(path, "\n")] = '\0';
+		chomp(path);
 		if (access(path, F_OK) == 0)
 			fprintf(tmp, "%s\n", path);
 	}
@@ -384,7 +385,7 @@ loadlines(const char *filepath, struct linebuffer *lb)
 			break;
 
 		/* remove '\n' read by fgets */
-		lb->data[lb->len][strcspn(lb->data[lb->len], "\n")] = '\0';
+		chomp(lb->data[lb->len]);
 		lb->len++;
 	}
 	fclose(fp);
@@ -416,7 +417,7 @@ dedupcheck(const char *target)
 		return (0);
 
 	while ((fgets(buf, sizeof(buf), fp)) != NULL) {
-		buf[strcspn(buf, "\n")] = '\0';
+		chomp(buf);
 
 		if (strcmp(buf, target) == 0) {
 			fclose(fp);
@@ -439,6 +440,12 @@ openhist(FILE **fp, const char *mode)
 	if (*fp == NULL)
 		return (0);;
 	return (1);
+}
+
+static void
+chomp(char *s)
+{
+	s[strcspn(s, "\n")] = '\0';
 }
 
 static void __dead
