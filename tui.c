@@ -69,7 +69,7 @@ tui_draw(const char **matches, const size_t mcount, const size_t lcount,
 	int avaliable = COLS - borderlen - dotslen;
 
 	for (size_t i = 0; i < mcount && (int)i < LINES - 3; i++) {
-		if (i == selected)
+		if ((int)i == selected)
 			attron(COLOR_PAIR(1) | A_BOLD);
 
 		/* truncate paths string that exceed terminal width */
