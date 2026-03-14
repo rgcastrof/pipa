@@ -48,6 +48,7 @@ tui_setup(void)
 
 	noecho();
 	keypad(stdscr, TRUE);
+	set_escdelay(100);
 	setcolors();
 }
 
@@ -93,6 +94,7 @@ tui_cleanup(void)
 {
 	endwin();
 	delscreen(t.scr);
+	fclose(t.term);
 	t.term = NULL;
 	t.scr = NULL;
 }
