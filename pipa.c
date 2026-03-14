@@ -57,13 +57,13 @@ struct string {
 static void __dead run(void);
 static int  addpath(const char *);
 static int  filterhist(int (*)(const char *, void *), void *);
-static void mkfilter(const struct linebuffer *, const char *, struct matches *, int);
+static void mkfilter(const char *, int);
 static void processkey(const int, int *, int *);
 static int  clearhist(void);
 static int  printhist(void);
 static int  get_histpath(char *, size_t);
 static int  touch(const char *);
-static int  loadlines(const char *, struct linebuffer *);
+static int  loadlines(const char *);
 static int  dedupcheck(const char *);
 static int  openhist(FILE **, const char *);
 static void chomp(char *);
@@ -150,7 +150,7 @@ run(void)
 		if (!touch(hist))
 			errx(1, "touch");
 
-	if (!loadlines(hist, &lb))
+	if (!loadlines(hist))
 		errx(1, "loadlines");
 
 	setlocale(LC_ALL, "");
@@ -161,7 +161,7 @@ run(void)
 
 	while (1) {
 		if (filter)
-			mkfilter(&lb, input.data, &m, LINES - 3);
+			mkfilter(input.data, LINES - 3);
 
 		erase();
 		tui_draw(m.data, m.count, lb.len, idx, input.data);
@@ -173,12 +173,12 @@ run(void)
 }
 
 static void
-mkfilter(const struct linebuffer *lb, const char *str, struct matches *m, int maxrows)
+mkfilter(const char *str, int maxrows)
 {
-	m->count = 0;
-	for (size_t i = 0; i < lb->len && m->count < maxrows; i++)
-		if (strstr(lb->data[i], str))
-			m->data[m->count++] = lb->data[i];
+	m.count = 0;
+	for (size_t i = 0; i < lb.len && (int)m.count < maxrows; i++)
+		if (strstr(lb.data[i], str))
+			m.data[m.count++] = lb.data[i];
 }
 
 static void
@@ -327,36 +327,36 @@ touch(const char *path)
 }
 
 static int
-loadlines(const char *filepath, struct linebuffer *lb)
+loadlines(const char *filepath)
 {
 	FILE *fp;
 	pathbuf_t *tmp;
-	lb->data = NULL;
-	lb->cap = 0, lb->len = 0;
+	lb.data = NULL;
+	lb.cap = 0, lb.len = 0;
 
 	fp = fopen(filepath, "r");
 	if (fp == NULL)
 		return (0);
 
 	for (;;) {
-		if (lb->len == lb->cap) {
-			lb->cap = lb->cap ? lb->cap * 2 : 16;
-			tmp = reallocarray(lb->data, lb->cap, sizeof(*tmp));
+		if (lb.len == lb.cap) {
+			lb.cap = lb.cap ? lb.cap * 2 : 16;
+			tmp = reallocarray(lb.data, lb.cap, sizeof(*tmp));
 			if (tmp == NULL) {
-				free(lb->data);
-				lb->data = NULL;
+				free(lb.data);
+				lb.data = NULL;
 				fclose(fp);
 				return (0);
 			}
-			lb->data = tmp;
+			lb.data = tmp;
 		}
 
-		if (fgets(lb->data[lb->len], PATH_MAX, fp) == NULL)
+		if (fgets(lb.data[lb.len], PATH_MAX, fp) == NULL)
 			break;
 
 		/* remove '\n' read by fgets */
-		chomp(lb->data[lb->len]);
-		lb->len++;
+		chomp(lb.data[lb.len]);
+		lb.len++;
 	}
 	fclose(fp);
 	return (1);
