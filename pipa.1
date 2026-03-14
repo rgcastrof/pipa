@@ -1,0 +1,85 @@
+.\" BSD 2-Clause License
+.\"
+.\" Copyright (c) 2026, Rogério Girão <rogeriogirao1@proton.me>
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions are met:
+.\"
+.\" 1. Redistributions of source code must retain the above copyright notice, this
+.\"    list of conditions and the following disclaimer.
+.\"
+.\" 2. Redistributions in binary form must reproduce the above copyright notice,
+.\"    this list of conditions and the following disclaimer in the documentation
+.\"    and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+.\" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+.\" DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+.\" SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+.\" CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+.\" OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+.\" OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+.\"
+.Dd $Mdocdate: March 13 2026 $
+.Dt PIPA 1
+.Os
+.Sh NAME
+.Nm pipa
+.Nd pick paths from history
+.Sh SYNOPSIS
+.Nm pipa
+.Op Fl lc
+.Op Fl ar Ar path
+.Sh DESCRIPTION
+.Nm
+utility reads a list of
+.Ar paths
+from the
+.Ar ~/.pipa_history
+file,
+which contains the
+.Ar paths
+added by the user with
+the
+.Ic -a
+flag.
+.Nm
+displays the list
+in an interactive interface,
+where users can filter
+the entries by typing.
+.Nm
+performs a substring match
+against the input.
+Upon selection, the chosen
+path is written to
+standard output.
+.Pp
+The options are as follows:
+.Bl -tag -width Ds
+.It Fl l
+Print the list of paths into standard output.
+.It Fl c
+Remove all the paths by cleaning
+.Ar ~/.pipa_history
+file.
+.It Fl a Ar path
+Append the given path into
+.Ar ~/.pipa_history
+file.
+.It Fl r Ar path
+Remove the given path from
+.Ar ~/.pipa_history
+file.
+.Sh EXIT STATUS
+.Ex -std pipa
+.Sh AUTHOR
+.An Rogério Girão (\fIrogeriogirao1@proton.me\fR)
+.Sh SEE ALSO
+.Xr ls 1 ,
+.Xr grep 1 ,
+.Xr ncurses 3 ,
+.Xr strstr 3
