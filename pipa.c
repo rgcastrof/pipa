@@ -61,6 +61,7 @@ static void processkey(const int, int *, int *);
 static int  rmpath(const char *);
 static int  clearhist(void);
 static int  printhist(void);
+static int  exists(void);
 static int  get_histpath(char *, size_t);
 static int  touch(const char *);
 static int  loadlines(const char *, struct linebuffer *);
@@ -76,10 +77,10 @@ int
 main(int argc, char *argv[])
 {
 	char *apath = NULL, *rpath = NULL;
-	int aflag = 0, rflag = 0, cflag = 0, lflag = 0;
+	int aflag = 0, rflag = 0, cflag = 0, lflag = 0, eflag = 0;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "a:r:cl")) != -1)
+	while ((ch = getopt(argc, argv, "a:r:cle")) != -1)
 		switch (ch) {
 		case 'a':
 			apath = optarg;
@@ -95,13 +96,16 @@ main(int argc, char *argv[])
 		case 'l':
 			lflag = 1;
 			break;
+		case 'e':
+			eflag = 1;
+			break;
 		default:
 			usage();
 		}
 	argc -= optind;
 	argv += optind;
 
-	if (!aflag && !rflag && !cflag && !lflag)
+	if (!aflag && !rflag && !cflag && !lflag && !eflag)
 		run();
 	if (apath != NULL)
 		if (!addpath(apath))
@@ -114,6 +118,9 @@ main(int argc, char *argv[])
 			err(1, NULL);
 	if (lflag)
 		if (!printhist())
+			err(1, NULL);
+	if (eflag)
+		if(!exists())
 			err(1, NULL);
 
 	return (0);
@@ -313,6 +320,44 @@ printhist(void)
 }
 
 static int
+exists(void)
+{
+	FILE *fp, *tmp;
+	pathbuf_t tmpfile;
+	pathbuf_t hist;
+	pathbuf_t path;
+
+	if (!get_histpath(hist, sizeof(hist)))
+		return (0);
+
+	if (snprintf(tmpfile, sizeof(tmpfile), "%s.tmp", hist) < 0)
+		return (0);
+
+	fp = fopen(hist, "r");
+	if (fp == NULL)
+		return (0);
+
+	tmp = fopen(tmpfile, "w");
+	if (tmp == NULL) {
+		fclose(fp);
+		return (0);
+	}
+
+	while (fgets(path, sizeof(path), fp) != NULL) {
+		path[strcspn(path, "\n")] = '\0';
+		if (access(path, F_OK) == 0)
+			fprintf(tmp, "%s\n", path);
+	}
+	fclose(fp);
+	fclose(tmp);
+
+	if (rename(tmpfile, hist) != 0)
+		return (0);
+
+	return (1);
+}
+
+static int
 touch(const char *path)
 {
 	FILE *fp;
@@ -399,6 +444,6 @@ dedupcheck(const char *hist, const char *target)
 static void __dead
 usage(void)
 {
-	(void)fprintf(stderr, "usage: %s [-arcl] path ...\n", getprogname());
+	(void)fprintf(stderr, "usage: %s [-arcle] path ...\n", getprogname());
 	exit(1);
 }
