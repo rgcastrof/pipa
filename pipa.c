@@ -56,18 +56,19 @@ struct string {
 
 static void __dead run(void);
 static int  addpath(const char *);
+static int  filterhist(int (*)(const char *, void *), void *);
 static void mkfilter(const struct linebuffer *, const char *, struct matches *, int);
 static void processkey(const int, int *, int *);
-static int  rmpath(const char *);
 static int  clearhist(void);
 static int  printhist(void);
-static int  exists(void);
 static int  get_histpath(char *, size_t);
 static int  touch(const char *);
 static int  loadlines(const char *, struct linebuffer *);
 static int  dedupcheck(const char *);
 static int  openhist(FILE **, const char *);
 static void chomp(char *);
+static int  rmpath(const char *, void *);
+static int  exists(const char *, void *);
 static void __dead usage(void);
 
 /* globals */
@@ -242,25 +243,15 @@ addpath(const char *path)
 }
 
 static int
-rmpath(const char *path)
+filterhist(int (*keep)(const char *, void *), void *arg)
 {
 	FILE *fp, *tmp;
-	pathbuf_t hist;
-	pathbuf_t resolved;
-	pathbuf_t tmpfile;
-	pathbuf_t buf;
+	pathbuf_t hist, tmpfile, buf;
 
-	if (!get_histpath(hist, sizeof(hist)))
-		return (0);
-
-	if (realpath(path, resolved) == NULL)
+	if (!openhist(&fp, "r"))
 		return (0);
 
 	if (snprintf(tmpfile, sizeof(tmpfile), "%s.tmp", hist) < 0)
-		return (0);
-
-	fp = fopen(hist, "r");
-	if (fp == NULL)
 		return (0);
 
 	tmp = fopen(tmpfile, "w");
@@ -271,7 +262,7 @@ rmpath(const char *path)
 
 	while ((fgets(buf, sizeof(buf), fp)) != NULL) {
 		chomp(buf);
-		if (strcmp(buf, resolved) != 0)
+		if (keep(buf, arg))
 			fprintf(tmp, "%s\n", buf);
 	}
 
@@ -311,41 +302,17 @@ printhist(void)
 }
 
 static int
-exists(void)
+rmpath(const char *path, void *arg)
 {
-	FILE *fp, *tmp;
-	pathbuf_t tmpfile;
-	pathbuf_t hist;
-	pathbuf_t path;
+	const char *target = arg;
+	return strcmp(path, target) != 0;
+}
 
-	if (!get_histpath(hist, sizeof(hist)))
-		return (0);
-
-	if (snprintf(tmpfile, sizeof(tmpfile), "%s.tmp", hist) < 0)
-		return (0);
-
-	fp = fopen(hist, "r");
-	if (fp == NULL)
-		return (0);
-
-	tmp = fopen(tmpfile, "w");
-	if (tmp == NULL) {
-		fclose(fp);
-		return (0);
-	}
-
-	while (fgets(path, sizeof(path), fp) != NULL) {
-		chomp(path);
-		if (access(path, F_OK) == 0)
-			fprintf(tmp, "%s\n", path);
-	}
-	fclose(fp);
-	fclose(tmp);
-
-	if (rename(tmpfile, hist) != 0)
-		return (0);
-
-	return (1);
+static int
+exists(const char *path, void *arg)
+{
+	(void)arg;
+	return access(path, F_OK) == 0;
 }
 
 static int
