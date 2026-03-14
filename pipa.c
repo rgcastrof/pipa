@@ -184,17 +184,17 @@ mkfilter(const char *str, int maxrows)
 static void
 processkey(const int ch, int *idx, int *filter)
 {
+	const char *out = NULL;
 	*filter = 0;
 
 	switch (ch) {
+		case 27:
+			goto finish;
 		case '\n':
 		case KEY_ENTER:
-			tui_cleanup();
 			if (m.count > 0)
-				printf("%s\n", m.data[*idx]);
-			free(lb.data);
-			free(m.data);
-			exit(0);
+				out = m.data[*idx];
+			goto finish;
 		case 127:
 		case KEY_BACKSPACE:
 			if (input.len > 0) {
@@ -220,6 +220,15 @@ processkey(const int ch, int *idx, int *filter)
 					*filter = 1;
 				}
 	}
+	return;
+
+	finish:
+		tui_cleanup();
+		if (out != NULL)
+			printf("%s\n", out);
+		free(lb.data);
+		free(m.data);
+		exit(0);
 }
 
 static int
