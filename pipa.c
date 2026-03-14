@@ -65,7 +65,8 @@ static int  exists(void);
 static int  get_histpath(char *, size_t);
 static int  touch(const char *);
 static int  loadlines(const char *, struct linebuffer *);
-static int  dedupcheck(const char *, const char *);
+static int  dedupcheck(const char *);
+static int  openhist(FILE **, const char *);
 static void __dead usage(void);
 
 /* globals */
@@ -217,20 +218,15 @@ addpath(const char *path)
 {
 	FILE *fp;
 	pathbuf_t resolved;
-	pathbuf_t hist;
 
-	if (!get_histpath(hist, sizeof(hist)))
+	if (!openhist(&fp, "a"))
 		return (0);
 
 	if (realpath(path, resolved) == NULL)
 		return (0);
 
-	if (dedupcheck(hist, resolved))
+	if (dedupcheck(resolved))
 		return (1);
-
-	fp = fopen(hist, "a");
-	if (fp == NULL)
-		return (0);
 
 	if (fprintf(fp, "%s\n", resolved) < 0) {
 		fclose(fp);
@@ -288,13 +284,8 @@ static int
 clearhist(void)
 {
 	FILE *fp;
-	pathbuf_t hist;
 
-	if (!get_histpath(hist, sizeof(hist)))
-		return (0);
-
-	fp = fopen(hist, "w");
-	if (fp == NULL)
+	if (!openhist(&fp, "w"))
 		return (0);
 	fclose(fp);
 	return (1);
@@ -304,18 +295,14 @@ static int
 printhist(void)
 {
 	FILE *fp;
-	pathbuf_t hist;
 	pathbuf_t path;
 
-	if (!get_histpath(hist, sizeof(hist)))
-		return (0);
-
-	fp = fopen(hist, "r");
-	if (fp == NULL)
+	if (!openhist(&fp, "r"))
 		return (0);
 
 	while (fgets(path, sizeof(path), fp) != NULL)
 		printf("%s", path);
+	fclose(fp);
 	return (1);
 }
 
@@ -420,13 +407,12 @@ get_histpath(char *buf, size_t bufsize)
 }
 
 static int
-dedupcheck(const char *hist, const char *target)
+dedupcheck(const char *target)
 {
 	FILE *fp;
 	pathbuf_t buf;
 
-	fp = fopen(hist, "r");
-	if (fp == NULL)
+	if (!openhist(&fp, "r"))
 		return (0);
 
 	while ((fgets(buf, sizeof(buf), fp)) != NULL) {
@@ -439,6 +425,20 @@ dedupcheck(const char *hist, const char *target)
 	}
 	fclose(fp);
 	return (0);
+}
+
+static int
+openhist(FILE **fp, const char *mode)
+{
+	pathbuf_t hist;
+
+	if (!get_histpath(hist, sizeof(hist)))
+		return (0);
+
+	*fp = fopen(hist, mode);
+	if (*fp == NULL)
+		return (0);;
+	return (1);
 }
 
 static void __dead
