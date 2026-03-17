@@ -1,0 +1,15 @@
+#!/bin/sh
+
+run() {
+  if [ "$#" -ne 1 ] || ! command -v "$1" >/dev/null 2>&1; then
+    printf "usage: %s [command]\n" "${0##*/}" >&2
+    exit 1
+  fi
+
+  arg=$(pipa)
+  [ -z "$arg" ] && exit 1
+
+  "$1" "$arg"
+}
+
+run "$@"
