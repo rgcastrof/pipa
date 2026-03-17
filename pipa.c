@@ -430,6 +430,6 @@ chomp(char *s)
 static void __dead
 usage(void)
 {
-	(void)fprintf(stderr, "usage: %s [-arcle] path ...\n", getprogname());
+	(void)fprintf(stderr, "usage: %s [-lce] [-a path] [-r path]\n", getprogname());
 	exit(1);
 }

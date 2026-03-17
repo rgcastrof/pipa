@@ -31,9 +31,11 @@
 .Nd pick paths from history
 .Sh SYNOPSIS
 .Nm pipa
-.Op Fl lc
-.Op Fl ar Ar path
+.Op Fl lce
+.Op Fl a Ar path
+.Op Fl r Ar path
 .Sh DESCRIPTION
+The
 .Nm
 utility reads a list of
 .Ar paths
@@ -58,6 +60,13 @@ Upon selection, the chosen
 path is written to
 standard output.
 .Pp
+.Ic pipa-run
+is a script that
+runs a command
+using the output of
+.Nm
+as its argument.
+.Pp
 The options are as follows:
 .Bl -tag -width Ds
 .It Fl l
@@ -66,6 +75,10 @@ Print the list of paths into standard output.
 Remove all the paths by cleaning
 .Ar ~/.pipa_history
 file.
+.It Fl e
+Remove paths from
+.Ar ~/.pipa_history
+that no longer exist.
 .It Fl a Ar path
 Append the given path into
 .Ar ~/.pipa_history
