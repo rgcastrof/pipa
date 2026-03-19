@@ -158,6 +158,11 @@ run(void)
 
 	/* allocates only what fits in the terminal */
 	m.data = malloc(LINES * sizeof(char *));
+	if (m.data == NULL) {
+		tui_cleanup();
+		free(lb.data);
+		err(1, NULL);
+	}
 
 	while (1) {
 		if (filter)
