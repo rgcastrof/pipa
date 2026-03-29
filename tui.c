@@ -62,7 +62,7 @@ setcolors(void)
 }
 
 void
-tui_draw(const char **matches, const size_t mcount, const size_t lcount,
+tui_draw(const char **matches, const int mcount, const int lcount,
      const int selected, const char *input)
 {
 	int borderlen = 2, dotslen = 3;
@@ -82,7 +82,7 @@ tui_draw(const char **matches, const size_t mcount, const size_t lcount,
 	}
 
 	attron(COLOR_PAIR(2));
-	mvprintw(LINES - 2, 2, "%lu/%lu", mcount, lcount);
+	mvprintw(LINES - 2, 2, "%d/%d", mcount, lcount);
 	attroff(COLOR_PAIR(2));
 	attron(A_BOLD);
 	mvprintw(LINES - 1, 0, "> %s", input);
