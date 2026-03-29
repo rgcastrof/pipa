@@ -68,26 +68,25 @@ struct string {
 	size_t len;
 };
 
-static void __dead run(void);
-static void addpath(const char *);
-static void filterhist(int (*)(const char *, const char *), void *);
-static void mkfilter(const char *, struct match *, int *);
-static int  fuzzy(const char *, const char*, double *);
-static int  compmatches(const void *, const void *);
-static void processkey(const int, int *, int *, struct match*, int);
-static int  clearhist(void);
-static int  printhist(void);
-static int  get_histpath(char *, size_t);
-static int  touch(const char *);
-static int  isdir(const char *);
-static int  loadlines(const char *);
-static int  dedupcheck(const char *);
-static int  openhist(FILE **, const char *);
-static void chomp(char *);
-static int  rmpath(const char *, const char *);
-static int  exists(const char *, const char *);
-static void __dead usage(void);
-
+static void           __dead run(void);
+static void           addpath(const char *);
+static void           filterhist(int (*)(const char *, const char *), void *);
+static void           mkfilter(const char *, const struct linebuffer*, struct match *, int *);
+static int            fuzzy(const char *, const char*, double *);
+static int            compmatches(const void *, const void *);
+static enum KeyAction processkey(const int);
+static int            clearhist(void);
+static int            printhist(void);
+static int            get_histpath(char *, size_t);
+static int            touch(const char *);
+static int            isdir(const char *);
+static int            loadlines(const char *, struct linebuffer *);
+static int            dedupcheck(const char *);
+static int            openhist(FILE **, const char *);
+static void           chomp(char *);
+static int            rmpath(const char *, const char *);
+static int            exists(const char *, const char *);
+static void           __dead usage(void);
 
 int
 main(int argc, char *argv[])
@@ -250,16 +249,18 @@ mkfilter(const char *search, const struct linebuffer *lb, struct match *matches,
 			(*matches_count)++;
 		}
 	}
+	/* sort matches */
 	qsort(matches, *matches_count, sizeof(struct match), compmatches);
 }
 
 static int
 fuzzy(const char *search, const char *text, double *distance)
 {
-	int pidx = 0;
+	int pidx = 0; /* search pointer */
 	int sidx = -1, eidx = -1;
 	int search_len = strlen(search);
 
+	/* input is empty */
 	if (search_len == 0) {
 		*distance = 0;
 		return 1;
@@ -273,10 +274,12 @@ fuzzy(const char *search, const char *text, double *distance)
 		}
 		if (pidx == search_len) {
 			eidx = i;
+			/* calculate distance */
 			*distance = log(sidx + 2) + (double)(eidx - sidx - search_len);
 			return 1;
 		}
 	}
+	/* match not found */
 	return (0);
 }
 
