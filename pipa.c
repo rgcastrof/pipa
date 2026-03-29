@@ -42,6 +42,16 @@
 
 typedef char pathbuf_t[PATH_MAX];
 
+enum KeyAction {
+	ACTION_NONE,
+	ACTION_QUIT,
+	ACTION_MOVE_UP,
+	ACTION_MOVE_DOWN,
+	ACTION_INSERT_CHAR,
+	ACTION_REMOVE_CHAR,
+	ACTION_SELECT_QUIT
+};
+
 struct linebuffer {
 	pathbuf_t *data;
 	size_t len;
@@ -138,8 +148,11 @@ run(void)
 	struct linebuffer lb;
 	struct match *matches;
 	struct string input = {0};
+	enum KeyAction action;
 	pathbuf_t hist;
 	const char *list[LINES];
+	const char *output = NULL;
+	int ch, running = 1;
 	int selected = 0, filter = 1;
 	int matches_count = 0;
 
@@ -164,7 +177,7 @@ run(void)
 		err(1, NULL);
 	}
 
-	while (1) {
+	while (running) {
 		if (filter)
 			mkfilter(input.data, &lb, matches, &matches_count);
 
@@ -176,8 +189,52 @@ run(void)
 		refresh();
 
 		ch = getch();
-		processkey(ch, &selected, &filter, matches, matches_count);
+		action = processkey(ch);
+
+		switch (action) {
+			case ACTION_MOVE_UP:
+				if (selected < matches_count - 1)
+					selected++;
+				break;
+			case ACTION_MOVE_DOWN:
+				if (selected > 0)
+					selected--;
+				break;
+			case ACTION_INSERT_CHAR:
+				if (input.len < sizeof(input.data) - 1) {
+					input.data[input.len++] = ch;
+					input.data[input.len] = '\0';
+					selected = 0;
+					filter = 1;
+				}
+				break;
+			case ACTION_REMOVE_CHAR:
+				if (input.len > 0) {
+					input.data[--input.len] = '\0';
+					selected = 0;
+					filter = 1;
+				}
+				break;
+			case ACTION_QUIT:
+				running = 0;
+				break;
+			case ACTION_SELECT_QUIT:
+				if (matches_count > 0)
+					output = matches[selected].text;
+				running = 0;
+				break;
+			case ACTION_NONE:
+				break;
+		}
 	}
+
+	tui_cleanup();
+	if (output != NULL)
+		printf("%s\n", output);
+	free(lb.data);
+	free(matches);
+	exit(0);
+
 }
 
 static void
@@ -232,54 +289,22 @@ compmatches(const void *a, const void *b)
 	return ma->distance == mb->distance ? 0 : ma->distance < mb->distance ? -1 : 1;
 }
 
-static void
-processkey(const int ch, int *selected, int *filter, struct match *matches, int matches_count)
+static enum KeyAction
+processkey(const int ch)
 {
-	const char *out = NULL;
-	*filter = 0;
-
 	switch (ch) {
-		case 27:
-			goto finish;
+		case 27:			return ACTION_QUIT;
 		case '\n':
-		case KEY_ENTER:
-			if (matches_count > 0)
-				out = matches[*selected].text;
-			goto finish;
+		case KEY_ENTER: 	return ACTION_SELECT_QUIT;
 		case 127:
-		case KEY_BACKSPACE:
-			if (input.len > 0) {
-				input.data[--input.len] = '\0';
-				*selected = 0;
-				*filter = 1;
-			}
-			break;
-		case KEY_UP:
-			if (*selected < matches_count - 1)
-				(*selected)++;
-			break;
-		case KEY_DOWN:
-			if (*selected > 0)
-				(*selected)--;
-			break;
+		case KEY_BACKSPACE: return ACTION_REMOVE_CHAR;
+		case KEY_UP: 		return ACTION_MOVE_UP;
+		case KEY_DOWN: 		return ACTION_MOVE_DOWN;
 		default:
 			if (isprint(ch))
-				if (input.len < sizeof(input.data) - 1) {
-					input.data[input.len++] = ch;
-					input.data[input.len] = '\0';
-					*selected = 0;
-					*filter = 1;
-				}
+				return ACTION_INSERT_CHAR;
+				return ACTION_NONE;
 	}
-	return;
-
-	finish:
-		tui_cleanup();
-		if (out != NULL)
-			printf("%s\n", out);
-		free(lb.data);
-		free(matches);
-		exit(0);
 }
 
 static void
