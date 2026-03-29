@@ -267,7 +267,7 @@ fuzzy(const char *search, const char *text, double *distance)
 	}
 
 	for (size_t i = 0; text[i] != '\0'; i++) {
-		if (text[i] == search[pidx]) {
+		if (tolower(text[i]) == tolower(search[pidx])) {
 			if (pidx == 0)
 				sidx = i;
 			pidx++;
