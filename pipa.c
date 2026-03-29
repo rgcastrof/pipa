@@ -25,6 +25,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include<sys/errno.h>
+#include<sys/stat.h>
+
 #include <ctype.h>
 #include <limits.h>
 #include <err.h>
@@ -63,6 +66,7 @@ static int  clearhist(void);
 static int  printhist(void);
 static int  get_histpath(char *, size_t);
 static int  touch(const char *);
+static int  isdir(const char *);
 static int  loadlines(const char *);
 static int  dedupcheck(const char *);
 static int  openhist(FILE **, const char *);
@@ -238,6 +242,9 @@ addpath(const char *path)
 	if (!realpath(path, resolved))
 		err(1, NULL);
 
+	if (isdir(resolved) != 0)
+		errx(1, "%s: %s", path, strerror(ENOTDIR));
+
 	if (!openhist(&fp, "a"))
 		errx(1, "openhist");
 
@@ -268,6 +275,8 @@ filterhist(int (*keep)(const char *, const char *), void *arg)
 		if (!realpath(path, resolved))
 			err(1, NULL);
 
+		if (isdir(resolved) != 0)
+			errx(1, "%s: %s", path, strerror(ENOTDIR));
 	}
 
 	if (!openhist(&fp, "r"))
@@ -343,6 +352,16 @@ touch(const char *path)
 		return (0);
 	fclose(fp);
 	return 1;
+}
+
+static int
+isdir(const char *path)
+{
+	struct stat st;
+	if (stat(path, &st) == -1)
+		err(1, "%s", path);
+
+	return S_ISREG(st.st_mode);
 }
 
 static int
