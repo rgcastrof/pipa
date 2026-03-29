@@ -36,6 +36,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 #include "tui.h"
 
@@ -61,6 +62,8 @@ static void __dead run(void);
 static void addpath(const char *);
 static void filterhist(int (*)(const char *, const char *), void *);
 static void mkfilter(const char *, struct match *, int *);
+static int  fuzzy(const char *, const char*, double *);
+static int  compmatches(const void *, const void *);
 static void processkey(const int, int *, int *, struct match*, int);
 static int  clearhist(void);
 static int  printhist(void);
@@ -180,12 +183,55 @@ run(void)
 }
 
 static void
-mkfilter(const char *str, int maxrows)
+mkfilter(const char *search, struct match *matches, int *matches_count)
 {
-	m.count = 0;
-	for (size_t i = 0; i < lb.len && (int)m.count < maxrows; i++)
-		if (strstr(lb.data[i], str))
-			m.data[m.count++] = lb.data[i];
+	double distance;
+	*matches_count = 0;
+
+	for (size_t i = 0; i < lb.len; i++) {
+		if (fuzzy(search, lb.data[i], &distance) && *matches_count < LINES) {
+			matches[*matches_count].text = lb.data[i];
+			matches[*matches_count].distance = distance;
+			(*matches_count)++;
+		}
+	}
+	qsort(matches, *matches_count, sizeof(struct match), compmatches);
+}
+
+static int
+fuzzy(const char *search, const char *text, double *distance)
+{
+	int pidx = 0;
+	int sidx = -1, eidx = -1;
+	int search_len = strlen(search);
+
+	if (search_len == 0) {
+		*distance = 0;
+		return 1;
+	}
+
+	for (size_t i = 0; text[i] != '\0'; i++) {
+		if (text[i] == search[pidx]) {
+			if (pidx == 0)
+				sidx = i;
+			pidx++;
+		}
+		if (pidx == search_len) {
+			eidx = i;
+			*distance = log(sidx + 2) + (double)(eidx - sidx - search_len);
+			return 1;
+		}
+	}
+	return (0);
+}
+
+static int
+compmatches(const void *a, const void *b)
+{
+	const struct match *ma = a;
+	const struct match *mb = b;
+
+	return ma->distance == mb->distance ? 0 : ma->distance < mb->distance ? -1 : 1;
 }
 
 static void
