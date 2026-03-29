@@ -55,8 +55,8 @@ struct string {
 };
 
 static void __dead run(void);
-static int  addpath(const char *);
-static int  filterhist(int (*)(const char *, void *), void *);
+static void addpath(const char *);
+static void filterhist(int (*)(const char *, const char *), void *);
 static void mkfilter(const char *, int);
 static void processkey(const int, int *, int *);
 static int  clearhist(void);
@@ -67,8 +67,8 @@ static int  loadlines(const char *);
 static int  dedupcheck(const char *);
 static int  openhist(FILE **, const char *);
 static void chomp(char *);
-static int  rmpath(const char *, void *);
-static int  exists(const char *, void *);
+static int  rmpath(const char *, const char *);
+static int  exists(const char *, const char *);
 static void __dead usage(void);
 
 /* globals */
@@ -79,7 +79,6 @@ static struct string input = {0};
 int
 main(int argc, char *argv[])
 {
-	pathbuf_t resolved;
 	char *apath = NULL, *rpath = NULL;
 	int aflag = 0, rflag = 0, cflag = 0, lflag = 0, eflag = 0;
 	int ch;
@@ -112,17 +111,11 @@ main(int argc, char *argv[])
 	if (!aflag && !rflag && !cflag && !lflag && !eflag)
 		run();
 
-	if (aflag) {
-		if (!realpath(apath, resolved))
-			err(1, NULL);
-		addpath(resolved);
-	}
+	if (aflag)
+		addpath(apath);
 
-	if (rflag) {
-		if (!realpath(rpath, resolved))
-			err(1, NULL);
-		filterhist(rmpath, resolved);
-	}
+	if (rflag)
+		filterhist(rmpath, rpath);
 
 	if (cflag && !clearhist())
 		err(1, NULL);
@@ -130,8 +123,8 @@ main(int argc, char *argv[])
 	if (lflag && !printhist())
 		err(1, NULL);
 
-	if (eflag && !filterhist(exists, NULL))
-		err(1, NULL);
+	if (eflag)
+		filterhist(exists, NULL);
 
 	return (0);
 }
@@ -236,47 +229,62 @@ processkey(const int ch, int *idx, int *filter)
 		exit(0);
 }
 
-static int
+static void
 addpath(const char *path)
 {
+	pathbuf_t resolved;
 	FILE *fp;
 
+	if (!realpath(path, resolved))
+		err(1, NULL);
+
 	if (!openhist(&fp, "a"))
-		return (0);
+		errx(1, "openhist");
 
-	if (dedupcheck(path))
-		return (1);
+	if (dedupcheck(resolved))
+		exit(0);
 
-	if (fprintf(fp, "%s\n", path) < 0) {
+	if (fprintf(fp, "%s\n", resolved) < 0) {
 		fclose(fp);
-		return 0;
+		err(1, NULL);
 	}
 
 	fclose(fp);
-	return (1);
+	exit(0);
 }
 
-static int
-filterhist(int (*keep)(const char *, void *), void *arg)
+/*
+ * rewrite the history file, keeping only the
+ * lines for which keep callback returns true
+ */
+static void
+filterhist(int (*keep)(const char *, const char *), void *arg)
 {
 	FILE *fp, *tmp;
-	pathbuf_t hist, tmpfile, buf;
+	pathbuf_t hist, tmpfile, buf, resolved;
+	const char *path = arg;
+
+	if (path != NULL) {
+		if (!realpath(path, resolved))
+			err(1, NULL);
+
+	}
 
 	if (!openhist(&fp, "r"))
-		return (0);
+		errx(1, "openhist");
 
 	if (snprintf(tmpfile, sizeof(tmpfile), "%s.tmp", hist) < 0)
-		return (0);
+		err(1, NULL);
 
 	tmp = fopen(tmpfile, "w");
 	if (tmp == NULL) {
 		fclose(fp);
-		return (0);
+		err(1, NULL);
 	}
 
 	while ((fgets(buf, sizeof(buf), fp)) != NULL) {
 		chomp(buf);
-		if (keep(buf, arg))
+		if (keep(buf, resolved))
 			fprintf(tmp, "%s\n", buf);
 	}
 
@@ -284,9 +292,7 @@ filterhist(int (*keep)(const char *, void *), void *arg)
 	fclose(tmp);
 
 	if (rename(tmpfile, hist) != 0)
-		return (0);
-
-	return (1);
+		return;
 }
 
 static int
@@ -316,16 +322,15 @@ printhist(void)
 }
 
 static int
-rmpath(const char *path, void *arg)
+rmpath(const char *path, const char *target)
 {
-	const char *target = arg;
 	return strcmp(path, target) != 0;
 }
 
 static int
-exists(const char *path, void *arg)
+exists(const char *path, const char *target)
 {
-	(void)arg;
+	(void)target;
 	return access(path, F_OK) == 0;
 }
 
