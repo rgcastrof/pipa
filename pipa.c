@@ -47,9 +47,9 @@ struct linebuffer {
 	size_t cap;
 };
 
-struct matches {
-	const char **data;
-	size_t count;
+struct match {
+	const char *text;
+	double distance;
 };
 
 struct string {
@@ -60,8 +60,8 @@ struct string {
 static void __dead run(void);
 static void addpath(const char *);
 static void filterhist(int (*)(const char *, const char *), void *);
-static void mkfilter(const char *, int);
-static void processkey(const int, int *, int *);
+static void mkfilter(const char *, struct match *, int *);
+static void processkey(const int, int *, int *, struct match*, int);
 static int  clearhist(void);
 static int  printhist(void);
 static int  get_histpath(char *, size_t);
@@ -77,7 +77,6 @@ static void __dead usage(void);
 
 /* globals */
 static struct linebuffer lb;
-static struct matches m;
 static struct string input = {0};
 
 int
@@ -136,9 +135,12 @@ main(int argc, char *argv[])
 static void __dead
 run(void)
 {
+	struct match *matches;
 	pathbuf_t hist;
+	const char *list[LINES];
 	int ch;
-	int idx = 0, filter = 1;
+	int selected = 0, filter = 1;
+	int matches_count = 0;
 
 	if (!get_histpath(hist, sizeof(hist)))
 		errx(1, "get_histpath");
@@ -154,8 +156,8 @@ run(void)
 	tui_setup();
 
 	/* allocates only what fits in the terminal */
-	m.data = malloc(LINES * sizeof(char *));
-	if (m.data == NULL) {
+	matches = malloc(LINES * sizeof(struct match));
+	if (matches == NULL) {
 		tui_cleanup();
 		free(lb.data);
 		err(1, NULL);
@@ -163,14 +165,17 @@ run(void)
 
 	while (1) {
 		if (filter)
-			mkfilter(input.data, LINES - 3);
+			mkfilter(input.data, matches, &matches_count);
+
+		for (int i = 0; i < LINES - 3; i++)
+			list[i] = matches[i].text;
 
 		erase();
-		tui_draw(m.data, m.count, lb.len, idx, input.data);
+		tui_draw(list, matches_count, (int)lb.len, selected, input.data);
 		refresh();
 
 		ch = getch();
-		processkey(ch, &idx, &filter);
+		processkey(ch, &selected, &filter, matches, matches_count);
 	}
 }
 
@@ -184,7 +189,7 @@ mkfilter(const char *str, int maxrows)
 }
 
 static void
-processkey(const int ch, int *idx, int *filter)
+processkey(const int ch, int *selected, int *filter, struct match *matches, int matches_count)
 {
 	const char *out = NULL;
 	*filter = 0;
@@ -194,31 +199,31 @@ processkey(const int ch, int *idx, int *filter)
 			goto finish;
 		case '\n':
 		case KEY_ENTER:
-			if (m.count > 0)
-				out = m.data[*idx];
+			if (matches_count > 0)
+				out = matches[*selected].text;
 			goto finish;
 		case 127:
 		case KEY_BACKSPACE:
 			if (input.len > 0) {
 				input.data[--input.len] = '\0';
-				*idx = 0;
+				*selected = 0;
 				*filter = 1;
 			}
 			break;
 		case KEY_UP:
-			if (*idx < (int)m.count - 1)
-				(*idx)++;
+			if (*selected < matches_count - 1)
+				(*selected)++;
 			break;
 		case KEY_DOWN:
-			if (*idx > 0)
-				(*idx)--;
+			if (*selected > 0)
+				(*selected)--;
 			break;
 		default:
 			if (isprint(ch))
 				if (input.len < sizeof(input.data) - 1) {
 					input.data[input.len++] = ch;
 					input.data[input.len] = '\0';
-					*idx = 0;
+					*selected = 0;
 					*filter = 1;
 				}
 	}
@@ -229,7 +234,7 @@ processkey(const int ch, int *idx, int *filter)
 		if (out != NULL)
 			printf("%s\n", out);
 		free(lb.data);
-		free(m.data);
+		free(matches);
 		exit(0);
 }
 
