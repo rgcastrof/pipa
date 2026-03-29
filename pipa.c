@@ -68,10 +68,10 @@ struct string {
 	size_t len;
 };
 
-static void           __dead run(void);
+static void           __dead run(int);
 static void           addpath(const char *);
 static void           filterhist(int (*)(const char *, const char *), void *);
-static void           mkfilter(const char *, const struct linebuffer*, struct match *, int *);
+static void           mkfilter(const char *, const struct linebuffer*, struct match *, int *, int);
 static int            fuzzy(const char *, const char*, double *);
 static int            compmatches(const void *, const void *);
 static enum KeyAction processkey(const int);
@@ -92,10 +92,10 @@ int
 main(int argc, char *argv[])
 {
 	char *apath = NULL, *rpath = NULL;
-	int aflag = 0, rflag = 0, cflag = 0, lflag = 0, eflag = 0;
+	int aflag = 0, rflag = 0, cflag = 0, lflag = 0, eflag = 0, sflag = 0;
 	int ch;
 
-	while ((ch = getopt(argc, argv, "a:r:cle")) != -1)
+	while ((ch = getopt(argc, argv, "a:r:scle")) != -1)
 		switch (ch) {
 		case 'a':
 			apath = optarg;
@@ -104,6 +104,9 @@ main(int argc, char *argv[])
 		case 'r':
 			rpath = optarg;
 			rflag = 1;
+			break;
+		case 's':
+			sflag = 1;
 			break;
 		case 'c':
 			cflag = 1;
@@ -121,7 +124,7 @@ main(int argc, char *argv[])
 	argv += optind;
 
 	if (!aflag && !rflag && !cflag && !lflag && !eflag)
-		run();
+		run(sflag);
 
 	if (aflag)
 		addpath(apath);
@@ -142,7 +145,7 @@ main(int argc, char *argv[])
 }
 
 static void __dead
-run(void)
+run(int strict)
 {
 	struct linebuffer lb;
 	struct match *matches;
@@ -178,7 +181,7 @@ run(void)
 
 	while (running) {
 		if (filter)
-			mkfilter(input.data, &lb, matches, &matches_count);
+			mkfilter(input.data, &lb, matches, &matches_count, strict);
 
 		for (int i = 0; i < LINES - 3; i++)
 			list[i] = matches[i].text;
@@ -237,20 +240,31 @@ run(void)
 }
 
 static void
-mkfilter(const char *search, const struct linebuffer *lb, struct match *matches, int *matches_count)
+mkfilter(const char *search, const struct linebuffer *lb,
+		struct match *matches, int *matches_count, int strict)
 {
 	double distance;
 	*matches_count = 0;
 
-	for (size_t i = 0; i < lb->len; i++) {
-		if (fuzzy(search, lb->data[i], &distance) && *matches_count < LINES) {
-			matches[*matches_count].text = lb->data[i];
-			matches[*matches_count].distance = distance;
-			(*matches_count)++;
+	if (strict) {
+		for (size_t i = 0; i < lb->len && *matches_count < LINES; i++) {
+			if (strcasestr(lb->data[i], search) != NULL) {
+				matches[*matches_count].text = lb->data[i];
+				matches[*matches_count].distance = 0;
+				(*matches_count)++;
+			}
 		}
+	} else {
+		for (size_t i = 0; i < lb->len; i++) {
+			if (fuzzy(search, lb->data[i], &distance) && *matches_count < LINES) {
+				matches[*matches_count].text = lb->data[i];
+				matches[*matches_count].distance = distance;
+				(*matches_count)++;
+			}
+		}
+		/* sort matches */
+		qsort(matches, *matches_count, sizeof(struct match), compmatches);
 	}
-	/* sort matches */
-	qsort(matches, *matches_count, sizeof(struct match), compmatches);
 }
 
 static int
@@ -536,6 +550,6 @@ chomp(char *s)
 static void __dead
 usage(void)
 {
-	(void)fprintf(stderr, "usage: %s [-lce] [-a path] [-r path]\n", getprogname());
+	(void)fprintf(stderr, "usage: %s [-slce] [-a path] [-r path]\n", getprogname());
 	exit(1);
 }
